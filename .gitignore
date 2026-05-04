@@ -1,0 +1,16 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+ios/
+android/.gradle/
+
+# Env
+.env
+
+# Laravel
+/vendor/
+/node_modules/
+.env
+/public/storage
+/storage/*.key
