@@ -1,24 +1,25 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../data/services/auth_service.dart';
 
-class QrAsistenciaScreen extends StatefulWidget {
+class QrAsistenciaMaestroScreen extends StatefulWidget {
   final int claseId;
   final String nombreClase;
 
-  const QrAsistenciaScreen({
+  const QrAsistenciaMaestroScreen({
     super.key,
     required this.claseId,
     required this.nombreClase,
   });
 
   @override
-  State<QrAsistenciaScreen> createState() => _QrAsistenciaScreenState();
+  State<QrAsistenciaMaestroScreen> createState() =>
+      _QrAsistenciaMaestroScreenState();
 }
 
-class _QrAsistenciaScreenState extends State<QrAsistenciaScreen> {
+class _QrAsistenciaMaestroScreenState
+    extends State<QrAsistenciaMaestroScreen> {
   final auth = AuthService();
 
   String? qrData;
@@ -35,14 +36,9 @@ class _QrAsistenciaScreenState extends State<QrAsistenciaScreen> {
   }
 
   Future<void> generarQr() async {
-    final prefs = await SharedPreferences.getInstance();
-    final alumnoId = prefs.getInt('id');
-
-    if (alumnoId == null) return;
-
     try {
       final res = await auth.generarQr({
-        "alumno_id": alumnoId,
+        "alumno_id": 1,
         "tipo_uso": "asistencia",
         "referencia_id": widget.claseId,
       });
@@ -51,7 +47,7 @@ class _QrAsistenciaScreenState extends State<QrAsistenciaScreen> {
         qrData = res['codigo'];
       });
     } catch (e) {
-      print("Error generando QR: $e");
+      print("Error generando QR de asistencia del maestro: $e");
     }
   }
 
@@ -87,7 +83,7 @@ class _QrAsistenciaScreenState extends State<QrAsistenciaScreen> {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    "Muestra este QR al maestro para registrar tu asistencia.",
+                    "Los alumnos deben escanear este QR para registrar asistencia.",
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),

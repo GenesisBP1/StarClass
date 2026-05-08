@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\ClaseController;
 use App\Http\Controllers\Api\TareaController;
 use App\Http\Controllers\Api\EntregaController;
 use App\Http\Controllers\Api\AsistenciaController;
+use App\Http\Controllers\Api\QrController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -23,3 +25,7 @@ Route::post('/tareas/entregar', [EntregaController::class, 'entregar']);
 Route::get('/tareas/{id}/entregas', [EntregaController::class, 'entregasPorTarea']);
 Route::post('/asistencias/registrar', [AsistenciaController::class, 'registrar']);
 Route::get('/clases/{id}/asistencias', [AsistenciaController::class, 'asistenciasPorClase']);
+Route::post('/qr/generar', [QrController::class, 'generar']);
+Route::post('/qr/validar', [QrController::class, 'validar']);
+Route::put('/clases/{id}', [ClaseController::class, 'actualizar']);
+Route::delete('/clases/{id}', [ClaseController::class, 'eliminar']);

@@ -43,4 +43,19 @@ abstract class AuthApi {
   @GET("/clases/{id}/asistencias")
   Future<dynamic> asistenciasPorClase(@Path("id") int id);
 
+@POST("/qr/generar")
+Future<dynamic> generarQr(@Body() Map<String, dynamic> data);
+
+@POST("/qr/validar")
+Future<dynamic> validarQr(@Body() Map<String, dynamic> data);
+
+@PUT("/clases/{id}")
+Future<dynamic> actualizarClase(
+  @Path("id") int id,
+  @Body() Map<String, dynamic> data,
+);
+
+@DELETE("/clases/{id}")
+Future<dynamic> eliminarClase(@Path("id") int id);
+
 }

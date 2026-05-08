@@ -4,6 +4,8 @@ import '../data/services/auth_service.dart';
 import 'tareas_screen.dart';
 import 'scanner_screen.dart';
 import 'asistencias_screen.dart';
+import 'qr_asistencia_maestro_screen.dart';
+
 
 class MaestroScreen extends StatefulWidget {
   const MaestroScreen({super.key});
@@ -160,21 +162,40 @@ class _MaestroScreenState extends State<MaestroScreen> {
                       child: ListTile(
                         title: Text(clase['nombre']),
                         subtitle: Text(
-                          clase['descripcion'] ?? 'Sin descripción',
+                          "${clase['descripcion'] ?? 'Sin descripción'}\nCódigo: ${clase['codigo_clase']}",
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.event_available),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AsistenciasScreen(
-                                  claseId: clase['id'],
-                                  nombreClase: clase['nombre'],
-                                ),
-                              ),
-                            );
-                          },
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.qr_code),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => QrAsistenciaMaestroScreen(
+                                      claseId: clase['id'],
+                                      nombreClase: clase['nombre'],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.event_available),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AsistenciasScreen(
+                                      claseId: clase['id'],
+                                      nombreClase: clase['nombre'],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                         onTap: () {
                           Navigator.push(

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/services/auth_service.dart';
 import 'tareas_screen.dart';
 import 'qr_asistencia_screen.dart';
+import 'scanner_screen.dart';
 
 class AlumnoScreen extends StatefulWidget {
   const AlumnoScreen({super.key});
@@ -174,9 +175,28 @@ class _AlumnoScreenState extends State<AlumnoScreen> {
                     );
                   },
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: mostrarFormularioUnirse,
-        child: const Icon(Icons.add),
+            floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: "scannerAlumno",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ScannerScreen(),
+                ),
+              );
+            },
+            child: const Icon(Icons.qr_code_scanner),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            heroTag: "unirseClase",
+            onPressed: mostrarFormularioUnirse,
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

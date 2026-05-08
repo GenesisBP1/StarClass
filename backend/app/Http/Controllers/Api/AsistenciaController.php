@@ -29,6 +29,17 @@ class AsistenciaController extends Controller
             ], 400);
         }
 
+                $inscrito = DB::table('alumnos_clases')
+            ->where('alumno_id', $request->alumno_id)
+            ->where('clase_id', $request->clase_id)
+            ->exists();
+        
+        if (!$inscrito) {
+            return response()->json([
+                'message' => 'El alumno no está inscrito en esta clase'
+            ], 403);
+        }
+
         DB::table('asistencias')->insert([
             'clase_id' => $request->clase_id,
             'alumno_id' => $request->alumno_id,

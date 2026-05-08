@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Clase;
+use Illuminate\Support\Facades\DB;
 
 class ClaseController extends Controller
 {
@@ -140,5 +141,35 @@ class ClaseController extends Controller
     ]);
 }
 
+public function actualizar(Request $request, $id)
+{
+    $request->validate([
+        'nombre' => 'required|string',
+        'descripcion' => 'nullable|string',
+    ]);
+
+    DB::table('clases')
+        ->where('id', $id)
+        ->update([
+            'nombre' => $request->nombre,
+            'descripcion' => $request->descripcion,
+            'updated_at' => now(),
+        ]);
+
+    return response()->json([
+        'message' => 'Clase actualizada correctamente'
+    ]);
+}
+
+public function eliminar($id)
+{
+    DB::table('clases')
+        ->where('id', $id)
+        ->delete();
+
+    return response()->json([
+        'message' => 'Clase eliminada correctamente'
+    ]);
+}
     
 }

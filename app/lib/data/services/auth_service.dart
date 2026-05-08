@@ -56,4 +56,20 @@ class AuthService {
   Future<dynamic> obtenerAsistenciasPorClase(int id) async {
     return await _api.asistenciasPorClase(id);
   }
+
+  Future<dynamic> generarQr(Map<String, dynamic> data) async {
+  return await _api.generarQr(data);
+  }
+  
+  Future<dynamic> validarQr(Map<String, dynamic> data) async {
+    return await _api.validarQr(data);
+  }
+
+  Future<dynamic> actualizarClase(int id, Map<String, dynamic> data) async {
+    return await _api.actualizarClase(id, data);
+  }
+
+  Future<dynamic> eliminarClase(int id) async {
+    return await _api.eliminarClase(id);
+  }
 }

@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../data/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -14,65 +14,62 @@ class _ScannerScreenState extends State<ScannerScreen> {
   final auth = AuthService();
 
   bool procesando = false;
-  String mensaje = "";
-
 
   Future<void> procesarQr(String rawValue) async {
     if (procesando) return;
-
-    procesando = true;
+  
+    setState(() {
+      procesando = true;
+    });
+  
     try {
-      final data = jsonDecode(rawValue);
-      final fechaQr = DateTime.parse(data['fecha']);
-      final ahora = DateTime.now();
-      final diferencia = ahora.difference(fechaQr).inMinutes;
-      
-      if (diferencia > 5) {
-        throw Exception("QR expirado");
+      final prefs = await SharedPreferences.getInstance();
+      final alumnoId = prefs.getInt('id');
+  
+      if (alumnoId == null) {
+        throw Exception("Alumno no encontrado");
       }
-
-
-      if (data['tipo'] == 'entrega_tarea') {
-        await auth.entregarTarea({
-          "tarea_id": data['tarea_id'],
-          "alumno_id": data['alumno_id'],
-        });
-
-        mensaje = "Entrega registrada correctamente";
-      } else if (data['tipo'] == 'asistencia') {
+  
+      final res = await auth.validarQr({
+        "codigo": rawValue,
+      });
+  
+      final qr = res['qr'];
+  
+      if (qr['tipo_uso'] == 'asistencia') {
         await auth.registrarAsistencia({
-          "clase_id": data['clase_id'],
-          "alumno_id": data['alumno_id'],
+          "clase_id": qr['referencia_id'],
+          "alumno_id": alumnoId,
         });
-
-        mensaje = "Asistencia registrada correctamente";
       } else {
-        throw Exception("QR inválido");
+        throw Exception("QR no válido para asistencia");
       }
-
+  
       if (!mounted) return;
-
+  
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Entrega registrada correctamente"),
+          content: Text("Asistencia registrada correctamente"),
         ),
       );
-
+  
       Navigator.pop(context);
-
+  
     } catch (e) {
       print("Error escaneando QR: $e");
-
+  
       if (!mounted) return;
-
+  
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("QR inválido o entrega duplicada"),
+          content: Text("QR inválido, expirado o ya usado"),
         ),
       );
+  
+      setState(() {
+        procesando = false;
+      });
     }
-
-    procesando = false;
   }
 
   @override
@@ -81,19 +78,30 @@ class _ScannerScreenState extends State<ScannerScreen> {
       appBar: AppBar(
         title: const Text("Escanear QR"),
       ),
-      body: MobileScanner(
-        onDetect: (capture) {
-          final List<Barcode> barcodes = capture.barcodes;
+      body: Stack(
+        children: [
+          MobileScanner(
+            onDetect: (capture) {
+              final List<Barcode> barcodes = capture.barcodes;
 
-          for (final barcode in barcodes) {
-            final raw = barcode.rawValue;
+              for (final barcode in barcodes) {
+                final raw = barcode.rawValue;
 
-            if (raw != null) {
-              procesarQr(raw);
-              break;
-            }
-          }
-        },
+                if (raw != null) {
+                  procesarQr(raw);
+                  break;
+                }
+              }
+            },
+          ),
+          if (procesando)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }

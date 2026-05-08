@@ -1,7 +1,8 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/services/auth_service.dart';
 
 class QrEntregaScreen extends StatefulWidget {
   final int tareaId;
@@ -19,29 +20,44 @@ class QrEntregaScreen extends StatefulWidget {
 
 class _QrEntregaScreenState extends State<QrEntregaScreen> {
   String? qrData;
+  Timer? timer;
 
   @override
   void initState() {
     super.initState();
     generarQr();
+
+    timer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      generarQr();
+    });
   }
 
   Future<void> generarQr() async {
     final prefs = await SharedPreferences.getInstance();
     final alumnoId = prefs.getInt('id');
+    final auth = AuthService();
 
     if (alumnoId == null) return;
 
-    final data = {
-      "tipo": "entrega_tarea",
-      "tarea_id": widget.tareaId,
-      "alumno_id": alumnoId,
-      "fecha": DateTime.now().toIso8601String(),
-    };
+    try {
+      final res = await auth.generarQr({
+        "alumno_id": alumnoId,
+        "tipo_uso": "tarea",
+        "referencia_id": widget.tareaId,
+      });
 
-    setState(() {
-      qrData = jsonEncode(data);
-    });
+      setState(() {
+        qrData = res['codigo'];
+      });
+    } catch (e) {
+      print("Error generando QR de entrega: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -72,6 +88,11 @@ class _QrEntregaScreenState extends State<QrEntregaScreen> {
                   const Text(
                     "Muestra este QR al maestro para registrar la entrega.",
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "El QR se actualiza cada 30 segundos.",
+                    style: TextStyle(fontSize: 12),
                   ),
                 ],
               ),
