@@ -37,20 +37,23 @@ class AuthController extends Controller
     {
         $request->validate([
             'correo' => 'required|email',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
-        $user = User::where('correo', $request->correo)->first();
+        $usuario = User::where('correo', $request->correo)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$usuario || !Hash::check($request->password, $usuario->password)) {
             return response()->json([
                 'message' => 'Credenciales incorrectas'
             ], 401);
         }
 
+        $token = $usuario->createToken('app_token')->plainTextToken;
+
         return response()->json([
             'message' => 'Login exitoso',
-            'user' => $user
+            'token' => $token,
+            'user' => $usuario
         ]);
     }
 }

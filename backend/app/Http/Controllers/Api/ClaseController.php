@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Clase;
 use Illuminate\Support\Facades\DB;
 
+
 class ClaseController extends Controller
 {
     public function store(Request $request)
@@ -169,6 +170,24 @@ public function eliminar($id)
 
     return response()->json([
         'message' => 'Clase eliminada correctamente'
+    ]);
+}
+
+public function alumnosClase($id)
+{
+    $alumnos = DB::table('alumnos_clases')
+        ->join('usuarios', 'alumnos_clases.alumno_id', '=', 'usuarios.id')
+        ->where('alumnos_clases.clase_id', $id)
+        ->select(
+            'usuarios.id',
+            'usuarios.nombre',
+            'usuarios.correo',
+            'alumnos_clases.created_at as fecha_union'
+        )
+        ->get();
+
+    return response()->json([
+        'alumnos' => $alumnos
     ]);
 }
     

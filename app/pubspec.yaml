@@ -32,9 +32,12 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  dio: ^5.4.0
+  path_provider: ^2.1.2
+  open_filex: ^4.4.0
+  permission_handler: ^11.3.0
 
   # 🔹 API / Retrofit
-  dio: ^5.9.2
   retrofit: ^4.9.2
   json_annotation: ^4.9.0
 

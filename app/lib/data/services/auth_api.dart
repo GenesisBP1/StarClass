@@ -41,21 +41,49 @@ abstract class AuthApi {
   Future<dynamic> registrarAsistencia(@Body() Map<String, dynamic> data);
 
   @GET("/clases/{id}/asistencias")
-  Future<dynamic> asistenciasPorClase(@Path("id") int id);
+  Future<dynamic> asistenciasPorClase(
+    @Path("id") int id,
+    @Query("fecha") String? fecha,
+  );
+  
+  @POST("/qr/generar")
+  Future<dynamic> generarQr(@Body() Map<String, dynamic> data);
+  
+  @POST("/qr/validar")
+  Future<dynamic> validarQr(@Body() Map<String, dynamic> data);
+  
+  @PUT("/clases/{id}")
+  Future<dynamic> actualizarClase(
+    @Path("id") int id,
+    @Body() Map<String, dynamic> data,
+  );
+  
+  @DELETE("/clases/{id}")
+  Future<dynamic> eliminarClase(@Path("id") int id);
+  
+  @PUT("/tareas/{id}")
+  Future<dynamic> actualizarTarea(
+    @Path("id") int id,
+    @Body() Map<String, dynamic> data,
+  );
+  
+  @DELETE("/tareas/{id}")
+  Future<dynamic> eliminarTarea(@Path("id") int id);
+  
+  @GET("/clases/{id}/alumnos")
+  Future<dynamic> alumnosClase(@Path("id") int id);
+  
+  @GET("/tareas/{id}/reporte")
+  Future<dynamic> reporteTarea(
+    @Path("id") int id,
+    @Query("fecha") String? fecha,
+  );
 
-@POST("/qr/generar")
-Future<dynamic> generarQr(@Body() Map<String, dynamic> data);
-
-@POST("/qr/validar")
-Future<dynamic> validarQr(@Body() Map<String, dynamic> data);
-
-@PUT("/clases/{id}")
-Future<dynamic> actualizarClase(
-  @Path("id") int id,
-  @Body() Map<String, dynamic> data,
-);
-
-@DELETE("/clases/{id}")
-Future<dynamic> eliminarClase(@Path("id") int id);
+    @GET("/clases/{id}/reporte-tareas")
+  Future<dynamic> reporteTareasClase(
+    @Path("id") int id,
+    @Query("fecha") String? fecha,
+    @Query("estado") String? estado,
+  );
 
 }

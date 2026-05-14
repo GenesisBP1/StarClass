@@ -58,4 +58,62 @@ class EntregaController extends Controller
             'entregas' => $entregas
         ]);
     }
+
+    public function reporteTarea($id)
+    {
+        $tarea = DB::table('tareas')->where('id', $id)->first();
+
+        if (!$tarea) {
+            return response()->json([
+                'message' => 'Tarea no encontrada'
+            ], 404);
+        }
+
+        $alumnos = DB::table('alumnos_clases')
+            ->join('usuarios', 'alumnos_clases.alumno_id', '=', 'usuarios.id')
+            ->where('alumnos_clases.clase_id', $tarea->clase_id)
+            ->select(
+                'usuarios.id',
+                'usuarios.nombre',
+                'usuarios.correo'
+            )
+            ->get();
+
+        if ($alumnos->isEmpty()) {
+            return response()->json([
+                'total_alumnos' => 0,
+                'total_entregadas' => 0,
+                'total_pendientes' => 0,
+                'reporte' => []
+            ]);
+        }
+
+        $entregasQuery = DB::table('tareas_entregadas')
+            ->where('tarea_id', $id);
+
+        if (request()->filled('fecha')) {
+            $entregasQuery->where('fecha_revision', request()->fecha);
+        }
+
+        $entregas = $entregasQuery->get()->keyBy('alumno_id');
+
+        $reporte = $alumnos->map(function ($alumno) use ($entregas) {
+            $entrega = $entregas->get($alumno->id);
+            return [
+                'alumno_id' => $alumno->id,
+                'nombre' => $alumno->nombre,
+                'correo' => $alumno->correo,
+                'estado' => $entrega ? 'Entregada' : 'Pendiente',
+                'fecha_revision' => $entrega->fecha_revision ?? null,
+                'hora_revision' => $entrega->hora_revision ?? null,
+            ];
+        });
+
+        return response()->json([
+            'total_alumnos' => $alumnos->count(),
+            'total_entregadas' => $reporte->where('estado', 'Entregada')->count(),
+            'total_pendientes' => $reporte->where('estado', 'Pendiente')->count(),
+            'reporte' => $reporte->values()
+        ]);
+    }
 }

@@ -53,8 +53,8 @@ class AuthService {
   return await _api.registrarAsistencia(data);
   }
   
-  Future<dynamic> obtenerAsistenciasPorClase(int id) async {
-    return await _api.asistenciasPorClase(id);
+  Future<dynamic> obtenerAsistenciasPorClase(int id, {String? fecha}) async {
+    return await _api.asistenciasPorClase(id, fecha);
   }
 
   Future<dynamic> generarQr(Map<String, dynamic> data) async {
@@ -72,4 +72,28 @@ class AuthService {
   Future<dynamic> eliminarClase(int id) async {
     return await _api.eliminarClase(id);
   }
+
+  Future<dynamic> actualizarTarea(int id, Map<String, dynamic> data) async {
+    return await _api.actualizarTarea(id, data);
+  }
+  
+  Future<dynamic> eliminarTarea(int id) async {
+    return await _api.eliminarTarea(id);
+  }
+  Future<dynamic> obtenerAlumnosClase(int id) async {
+  return await _api.alumnosClase(id);
+  }
+
+  Future<dynamic> obtenerReporteTarea(int id, {String? fecha}) async {
+    return await _api.reporteTarea(id, fecha);
+  }
+
+  Future<dynamic> obtenerReporteTareasClase(
+    int id, {
+    String? fecha,
+    String? estado,
+  }) async {
+    return await _api.reporteTareasClase(id, fecha, estado);
+  }
+
 }

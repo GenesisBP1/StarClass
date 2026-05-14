@@ -1,251 +1,288 @@
 import 'package:flutter/material.dart';
-import '../data/services/auth_service.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/services/auth_service.dart';
 
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+const Color _primary       = Color(0xFF4F46E5);
+const Color _primaryDark   = Color(0xFF3730A3);
+const Color _primaryLight  = Color(0xFFEEF0FF);
+const Color _accent        = Color(0xFF7C3AED);
+const Color _bg            = Color(0xFFF8F8FC);
+const Color _surface       = Colors.white;
+const Color _textPrimary   = Color(0xFF111827);
+const Color _textSecondary = Color(0xFF6B7280);
+const Color _textHint      = Color(0xFFB0B4C8);
+const Color _border        = Color(0xFFE5E7EB);
+const Color _borderFocus   = Color(0xFF4F46E5);
+const Color _errorColor    = Color(0xFFEF4444);
+const Color _successColor  = Color(0xFF10B981);
+
+const _grad = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+);
+
+// ─── Screen ──────────────────────────────────────────────────────────────────
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  // Controllers
-  final nombreController = TextEditingController();
-  final correoController = TextEditingController();
-  final passwordController = TextEditingController();
-  final confirmarPasswordController = TextEditingController();
+    with TickerProviderStateMixin {
+  final auth                     = AuthService();
+  final _formKey                 = GlobalKey<FormState>();
+  final nombreCtrl               = TextEditingController();
+  final correoCtrl               = TextEditingController();
+  final passwordCtrl             = TextEditingController();
+  final confirmCtrl              = TextEditingController();
+  final FocusNode _correoFocus   = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
 
-  // Services
-  final auth = AuthService();
+  bool _isLogin         = true;
+  bool _obscurePwd      = true;
+  bool _obscureConfirm  = true;
+  bool _loading         = false;
+  String _rol           = 'alumno';
 
-  // State
-  bool esRegistro = false;
-  bool obscurePassword = true;
-  bool obscureConfirm = true;
-  String rolSeleccionado = 'alumno';
-
-  // Animation
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
-
-  // Demo accounts
-  final List<Map<String, String>> demoAccounts = [
-    {'rol': 'Alumno', 'correo': 'sofia.ramirez@universidad.edu.mx'},
-    {'rol': 'Maestro', 'correo': 'prof.hernandez@universidad.edu.mx'},
-  ];
-
-  static const Color _primary = Color(0xFF5B5FEF);
-  static const Color _primaryLight = Color(0xFF7B7FF5);
-  static const Color _bgColor = Color(0xFFF5F5FA);
-  static const Color _cardColor = Colors.white;
-  static const Color _textDark = Color(0xFF1A1A2E);
-  static const Color _textGray = Color(0xFF9090A0);
-  static const Color _borderColor = Color(0xFFE8E8F0);
+  late AnimationController _tabCtrl;
+  late AnimationController _formCtrl;
+  late Animation<double>   _formFade;
+  late Animation<Offset>   _formSlide;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0.06, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
+    _tabCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 200));
+    _formCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 320));
+    _formFade  = CurvedAnimation(parent: _formCtrl, curve: Curves.easeOut);
+    _formSlide = Tween<Offset>(begin: const Offset(0, .04), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _formCtrl, curve: Curves.easeOut));
+    _formCtrl.forward();
   }
 
-  void _switchMode(bool toRegistro) {
-    if (esRegistro == toRegistro) return;
-    _animController.reset();
-    setState(() {
-      esRegistro = toRegistro;
-      nombreController.clear();
-      correoController.clear();
-      passwordController.clear();
-      confirmarPasswordController.clear();
-      rolSeleccionado = 'alumno';
-    });
-    _animController.forward();
-  }
-
-  Future<void> login() async {
-    try {
-      final res = await auth.login(
-        correoController.text.trim(),
-        passwordController.text.trim(),
-      );
-      final user = res['user'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('id', user['id']);
-      await prefs.setString('correo', user['correo']);
-      await prefs.setString('nombre', user['nombre']);
-      await prefs.setString('rol', user['rol']);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login exitoso")),
-      );
-      Navigator.pushReplacementNamed(
-        context,
-        user['rol'] == 'maestro' ? '/maestro' : '/alumno',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Credenciales incorrectas")),
-      );
-    }
-  }
-
-  Future<void> registrar() async {
-    if (nombreController.text.trim().isEmpty ||
-        correoController.text.trim().isEmpty ||
-        passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Completa todos los campos")),
-      );
-      return;
-    }
-    if (passwordController.text != confirmarPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Las contraseñas no coinciden")),
-      );
-      return;
-    }
-    try {
-      await auth.register({
-        "nombre": nombreController.text.trim(),
-        "correo": correoController.text.trim(),
-        "password": passwordController.text.trim(),
-        "rol": rolSeleccionado,
+  void _switchMode(bool toLogin) {
+    if (_isLogin == toLogin) return;
+    HapticFeedback.selectionClick();
+    _formCtrl.reverse().then((_) {
+      setState(() {
+        _isLogin = toLogin;
+        _clearFields();
       });
-      if (!mounted) return;
-      _switchMode(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Usuario registrado correctamente")),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No se pudo registrar el usuario")),
-      );
+      _formCtrl.forward();
+    });
+  }
+
+  void _clearFields() {
+    nombreCtrl.clear();
+    correoCtrl.clear();
+    passwordCtrl.clear();
+    confirmCtrl.clear();
+    _rol = 'alumno';
+  }
+
+  Future<void> _submit() async {
+    if (_loading) return;
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _loading = true);
+    try {
+      if (_isLogin) {
+        await _doLogin();
+      } else {
+        await _doRegister();
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  @override
-  void dispose() {
-    _animController.dispose();
-    nombreController.dispose();
-    correoController.dispose();
-    passwordController.dispose();
-    confirmarPasswordController.dispose();
-    super.dispose();
+  Future<void> _doLogin() async {
+    final res  = await auth.login(
+        correoCtrl.text.trim(), passwordCtrl.text.trim());
+    final user = res['user'];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('id', user['id']);
+    await prefs.setString('correo',  user['correo']);
+    await prefs.setString('nombre',  user['nombre']);
+    await prefs.setString('rol',     user['rol']);
+    await prefs.setString('token',   res['token']);
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(
+      context, user['rol'] == 'maestro' ? '/maestro' : '/alumno');
   }
 
-  // ─── Widgets ──────────────────────────────────────────────────────────────
+  Future<void> _doRegister() async {
+    if (passwordCtrl.text != confirmCtrl.text) {
+      _showError('Las contraseñas no coinciden'); return;
+    }
+    await auth.register({
+      "nombre":   nombreCtrl.text.trim(),
+      "correo":   correoCtrl.text.trim(),
+      "password": passwordCtrl.text.trim(),
+      "rol":      _rol,
+    });
+    if (!mounted) return;
+    _showSuccess('Cuenta creada. ¡Inicia sesión!');
+    _switchMode(true);
+  }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const Icon(Icons.error_outline, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(msg)),
+      ]),
+      backgroundColor: _errorColor,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.all(16),
+    ));
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(msg)),
+      ]),
+      backgroundColor: _successColor,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.all(16),
+    ));
+  }
+
+  // ─── Build ────────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Scaffold(
+      backgroundColor: _bg,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: bottom + 24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHero(),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: FadeTransition(
+                    opacity: _formFade,
+                    child: SlideTransition(
+                      position: _formSlide,
+                      child: _isLogin ? _buildLoginFields()
+                                      : _buildRegisterFields(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildSubmitButton(),
+                ),
+                const SizedBox(height: 20),
+                _buildSwitchRow(),
+              ],
+            ),
+          ),
         ),
       ),
-      child: Column(
-        children: [
-          // Logo
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: const Icon(Icons.school_rounded, color: _primary, size: 32),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'StarClass',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const Text(
-            'Tu aula conectada',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Tab switcher
-          Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                _buildTab('Iniciar sesión', !esRegistro, () => _switchMode(false)),
-                _buildTab('Registrarse', esRegistro, () => _switchMode(true)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildTab(String label, bool active, VoidCallback onTap) {
+  // ─── Hero header ─────────────────────────────────────────────────────────
+  Widget _buildHero() {
+    return Container(
+      decoration: const BoxDecoration(gradient: _grad),
+      padding: EdgeInsets.fromLTRB(
+          24, MediaQuery.of(context).padding.top + 36, 24, 0),
+      child: Column(children: [
+        // Logo
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(.18),
+                  blurRadius: 20, offset: const Offset(0, 8))
+            ],
+          ),
+          child: const Icon(Icons.school_rounded,
+              color: _primary, size: 38),
+        ),
+        const SizedBox(height: 14),
+        const Text('StarClass',
+            style: TextStyle(color: Colors.white,
+                fontSize: 28, fontWeight: FontWeight.w800,
+                letterSpacing: -.5)),
+        const SizedBox(height: 4),
+        const Text('Tu aula conectada',
+            style: TextStyle(color: Colors.white60, fontSize: 14)),
+        const SizedBox(height: 28),
+
+        // Tab bar
+        Container(
+          height: 48,
+          margin: const EdgeInsets.symmetric(horizontal: 0),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.15),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.all(4),
+          child: Row(children: [
+            _tab('Iniciar sesión', _isLogin, () => _switchMode(true)),
+            _tab('Registrarse',   !_isLogin, () => _switchMode(false)),
+          ]),
+        ),
+        const SizedBox(height: 0),
+
+        // Curved bottom
+        Container(
+          height: 28,
+          decoration: BoxDecoration(
+            color: _bg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          margin: const EdgeInsets.only(top: 24),
+        ),
+      ]),
+    );
+  }
+
+  Widget _tab(String label, bool active, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.all(4),
+          duration: const Duration(milliseconds: 220),
           decoration: BoxDecoration(
             color: active ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
+            borderRadius: BorderRadius.circular(10),
             boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.10),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
+                ? [BoxShadow(color: Colors.black.withOpacity(.1),
+                      blurRadius: 6, offset: const Offset(0, 2))]
                 : [],
           ),
           alignment: Alignment.center,
           child: AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 200),
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: active ? _primary : Colors.white,
+              fontSize: 14, fontWeight: FontWeight.w600,
+              color: active ? _primary : Colors.white.withOpacity(.75),
             ),
             child: Text(label),
           ),
@@ -254,172 +291,250 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildDemoBanner() {
+  // ─── Login fields ─────────────────────────────────────────────────────────
+  Widget _buildLoginFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Demo hint card
+        _demoCard(),
+        const SizedBox(height: 20),
+        _label('Correo institucional'),
+        const SizedBox(height: 6),
+        _inputField(
+          controller: correoCtrl,
+          focusNode: _correoFocus,
+          nextFocus: _passwordFocus,
+          hint: 'alumno@universidad.edu.mx',
+          icon: Icons.alternate_email_rounded,
+          keyboardType: TextInputType.emailAddress,
+          validator: (v) =>
+              (v?.isEmpty ?? true) ? 'Ingresa tu correo' : null,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _label('Contraseña'),
+            TextButton(
+              onPressed: () {},
+              style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: const Text('¿Olvidaste tu contraseña?',
+                  style: TextStyle(fontSize: 12,
+                      color: _primary, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        _inputField(
+          controller: passwordCtrl,
+          focusNode: _passwordFocus,
+          hint: '••••••••',
+          icon: Icons.lock_outline_rounded,
+          obscure: _obscurePwd,
+          onToggleObscure: () =>
+              setState(() => _obscurePwd = !_obscurePwd),
+          validator: (v) =>
+              (v?.isEmpty ?? true) ? 'Ingresa tu contraseña' : null,
+          textInputAction: TextInputAction.done,
+          onSubmit: (_) => _submit(),
+        ),
+      ],
+    );
+  }
+
+  Widget _demoCard() {
+    final accounts = [
+      {'rol': 'Alumno',  'correo': 'sofia.ramirez@universidad.edu.mx'},
+      {'rol': 'Maestro', 'correo': 'prof.hernandez@universidad.edu.mx'},
+    ];
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF0FF),
+        color: _primaryLight,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD0D4FF)),
+        border: Border.all(color: _primary.withOpacity(.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.info_outline_rounded, size: 16, color: _primary),
-              SizedBox(width: 6),
-              Text(
-                'Cuentas de demostración',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
+          const Row(children: [
+            Icon(Icons.info_outline_rounded, size: 14, color: _primary),
+            SizedBox(width: 6),
+            Text('Cuentas demo', style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
+          ]),
+          const SizedBox(height: 10),
+          ...accounts.map((a) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: _border),
+                ),
+                child: Text(a['rol']!, style: const TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: _textPrimary)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: Text(a['correo']!,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: _textSecondary))),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  correoCtrl.text   = a['correo']!;
+                  passwordCtrl.text = '12345678';
+                  HapticFeedback.lightImpact();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text('Usar', style: TextStyle(
+                      color: Colors.white, fontSize: 11,
+                      fontWeight: FontWeight.w700)),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...demoAccounts.map(
-            (acc) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  _rolChip(acc['rol']!),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      acc['correo']!,
-                      style: const TextStyle(fontSize: 12, color: _textDark),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      correoController.text = acc['correo']!;
-                      passwordController.text = '12345678';
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: _primary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'Usar',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+            ]),
+          )),
         ],
       ),
     );
   }
 
-  Widget _rolChip(String rol) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _borderColor),
-      ),
-      child: Text(
-        rol,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _textDark),
-      ),
-    );
-  }
-
-  Widget _buildRolSelector() {
+  // ─── Register fields ──────────────────────────────────────────────────────
+  Widget _buildRegisterFields() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '¿Cómo deseas ingresar?',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: _textDark,
-          ),
-        ),
+        // Rol selector
+        _label('¿Cómo deseas ingresar?'),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            _rolCard(
-              'alumno',
-              'Alumno',
+        Row(children: [
+          _rolCard('alumno', 'Alumno',
               'Únete a clases y entrega tareas',
-              Icons.person_rounded,
-            ),
-            const SizedBox(width: 10),
-            _rolCard(
-              'maestro',
-              'Maestro',
+              Icons.person_rounded),
+          const SizedBox(width: 10),
+          _rolCard('maestro', 'Maestro',
               'Crea clases y gestiona alumnos',
-              Icons.person_outline_rounded,
-            ),
-          ],
+              Icons.school_rounded),
+        ]),
+        const SizedBox(height: 20),
+
+        _label('Nombre completo'),
+        const SizedBox(height: 6),
+        _inputField(
+          controller: nombreCtrl,
+          hint: 'Sofía Ramírez Torres',
+          icon: Icons.person_outline_rounded,
+          validator: (v) =>
+              (v?.isEmpty ?? true) ? 'Ingresa tu nombre' : null,
         ),
+        const SizedBox(height: 16),
+
+        _label('Correo institucional'),
+        const SizedBox(height: 6),
+        _inputField(
+          controller: correoCtrl,
+          hint: 'nombre@universidad.edu.mx',
+          icon: Icons.alternate_email_rounded,
+          keyboardType: TextInputType.emailAddress,
+          validator: (v) =>
+              (v?.isEmpty ?? true) ? 'Ingresa tu correo' : null,
+        ),
+        const SizedBox(height: 16),
+
+        // 2 password fields side note
+        Row(children: [
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label('Contraseña'),
+              const SizedBox(height: 6),
+              _inputField(
+                controller: passwordCtrl,
+                hint: 'Mín. 8 caracteres',
+                icon: Icons.lock_outline_rounded,
+                obscure: _obscurePwd,
+                onToggleObscure: () =>
+                    setState(() => _obscurePwd = !_obscurePwd),
+                validator: (v) => (v?.length ?? 0) < 8
+                    ? 'Mínimo 8 caracteres' : null,
+              ),
+            ],
+          )),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _label('Confirmar'),
+              const SizedBox(height: 6),
+              _inputField(
+                controller: confirmCtrl,
+                hint: 'Repite',
+                icon: Icons.lock_outline_rounded,
+                obscure: _obscureConfirm,
+                onToggleObscure: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
+                validator: (v) => v != passwordCtrl.text
+                    ? 'No coincide' : null,
+                textInputAction: TextInputAction.done,
+                onSubmit: (_) => _submit(),
+              ),
+            ],
+          )),
+        ]),
       ],
     );
   }
 
   Widget _rolCard(String value, String label, String desc, IconData icon) {
-    final selected = rolSeleccionado == value;
+    final sel = _rol == value;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => rolSeleccionado = value),
+        onTap: () { HapticFeedback.selectionClick();
+            setState(() => _rol = value); },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFEEF0FF) : _cardColor,
+            color: sel ? _primaryLight : _surface,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? _primary : _borderColor,
-              width: selected ? 1.8 : 1,
-            ),
+                color: sel ? _primary : _border,
+                width: sel ? 1.8 : 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36,
-                height: 36,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 38, height: 38,
                 decoration: BoxDecoration(
-                  color: selected ? _primary : const Color(0xFFF0F0F5),
+                  color: sel ? _primary : const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon,
-                    color: selected ? Colors.white : _textGray, size: 20),
+                    color: sel ? Colors.white : _textSecondary,
+                    size: 20),
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: selected ? _primary : _textDark,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                desc,
-                style:
-                    const TextStyle(fontSize: 10, color: _textGray, height: 1.3),
-              ),
+              const SizedBox(height: 10),
+              Text(label, style: TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 13,
+                  color: sel ? _primary : _textPrimary)),
+              const SizedBox(height: 3),
+              Text(desc, style: const TextStyle(
+                  fontSize: 10, color: _textSecondary, height: 1.35)),
             ],
           ),
         ),
@@ -427,231 +542,127 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscure = false,
-    bool? obscureState,
-    VoidCallback? onToggleObscure,
-    String? hint,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: _textDark,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          obscureText: obscureState ?? false,
-          keyboardType: keyboardType,
-          style: const TextStyle(fontSize: 14, color: _textDark),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: _textGray, fontSize: 14),
-            prefixIcon: Icon(icon, color: _textGray, size: 20),
-            suffixIcon: obscure
-                ? IconButton(
-                    icon: Icon(
-                      (obscureState ?? true)
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: _textGray,
-                      size: 20,
-                    ),
-                    onPressed: onToggleObscure,
-                  )
-                : null,
-            filled: true,
-            fillColor: _cardColor,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _borderColor),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _borderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _primary, width: 1.8),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoginForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildDemoBanner(),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildField(
-                controller: correoController,
-                label: 'Correo institucional',
-                icon: Icons.alternate_email_rounded,
-                hint: 'alumno@universidad.edu.mx',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-              _buildField(
-                controller: passwordController,
-                label: 'Contraseña',
-                icon: Icons.lock_outline_rounded,
-                hint: '••••••••',
-                obscure: true,
-                obscureState: obscurePassword,
-                onToggleObscure: () =>
-                    setState(() => obscurePassword = !obscurePassword),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    '¿Olvidaste tu contraseña?',
-                    style: TextStyle(
-                      color: _primary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildPrimaryButton('Iniciar sesión', login),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRegisterForm() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildRolSelector(),
-          const SizedBox(height: 16),
-          _buildField(
-            controller: nombreController,
-            label: 'Nombre completo',
-            icon: Icons.person_outline_rounded,
-            hint: 'Ej. Sofía Ramírez Torres',
-          ),
-          const SizedBox(height: 14),
-          _buildField(
-            controller: correoController,
-            label: 'Correo institucional',
-            icon: Icons.alternate_email_rounded,
-            hint: 'nombre@universidad.edu.mx',
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 14),
-          _buildField(
-            controller: passwordController,
-            label: 'Contraseña',
-            icon: Icons.lock_outline_rounded,
-            hint: 'Mínimo 8 caracteres',
-            obscure: true,
-            obscureState: obscurePassword,
-            onToggleObscure: () =>
-                setState(() => obscurePassword = !obscurePassword),
-          ),
-          const SizedBox(height: 14),
-          _buildField(
-            controller: confirmarPasswordController,
-            label: 'Confirmar contraseña',
-            icon: Icons.lock_outline_rounded,
-            hint: 'Repite tu contraseña',
-            obscure: true,
-            obscureState: obscureConfirm,
-            onToggleObscure: () =>
-                setState(() => obscureConfirm = !obscureConfirm),
-          ),
-          const SizedBox(height: 24),
-          _buildPrimaryButton('Crear cuenta', registrar),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrimaryButton(String label, VoidCallback onPressed) {
+  // ─── Submit button ────────────────────────────────────────────────────────
+  Widget _buildSubmitButton() {
     return SizedBox(
-      height: 50,
+      height: 52,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: _loading ? null : _submit,
         style: ElevatedButton.styleFrom(
           backgroundColor: _primary,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: _primary.withOpacity(.6),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(14)),
+        ),
+        child: _loading
+            ? const SizedBox(width: 22, height: 22,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5))
+            : Text(
+                _isLogin ? 'Iniciar sesión' : 'Crear cuenta',
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    letterSpacing: .2),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          _isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? ',
+          style: const TextStyle(color: _textSecondary, fontSize: 14),
+        ),
+        GestureDetector(
+          onTap: () => _switchMode(!_isLogin),
+          child: Text(
+            _isLogin ? 'Regístrate' : 'Inicia sesión',
+            style: const TextStyle(
+                color: _primary, fontSize: 14,
+                fontWeight: FontWeight.w700),
           ),
         ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-          ),
-        ),
+      ],
+    );
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  Widget _label(String text) => Text(text,
+      style: const TextStyle(fontSize: 13,
+          fontWeight: FontWeight.w600, color: _textPrimary));
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    FocusNode? focusNode,
+    FocusNode? nextFocus,
+    bool obscure = false,
+    VoidCallback? onToggleObscure,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    TextInputAction textInputAction = TextInputAction.next,
+    void Function(String)? onSubmit,
+  }) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      obscureText: obscure,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onSubmit ?? (_) {
+        if (nextFocus != null) FocusScope.of(context).requestFocus(nextFocus);
+      },
+      validator: validator,
+      style: const TextStyle(fontSize: 14,
+          color: _textPrimary, fontWeight: FontWeight.w500),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: _textHint, fontSize: 14),
+        prefixIcon: Icon(icon, color: _textSecondary, size: 20),
+        suffixIcon: onToggleObscure != null
+            ? IconButton(
+                icon: Icon(
+                  obscure ? Icons.visibility_off_outlined
+                           : Icons.visibility_outlined,
+                  color: _textSecondary, size: 20),
+                onPressed: onToggleObscure)
+            : null,
+        filled: true,
+        fillColor: _surface,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _border)),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _border)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _borderFocus, width: 2)),
+        errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _errorColor)),
+        focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _errorColor, width: 2)),
+        errorStyle: const TextStyle(fontSize: 11),
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgColor,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 4),
-            // Animated form area
-            FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    esRegistro ? _buildRegisterForm() : _buildLoginForm(),
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void dispose() {
+    _tabCtrl.dispose(); _formCtrl.dispose();
+    nombreCtrl.dispose(); correoCtrl.dispose();
+    passwordCtrl.dispose(); confirmCtrl.dispose();
+    _correoFocus.dispose(); _passwordFocus.dispose();
+    super.dispose();
   }
 }

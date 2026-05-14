@@ -17,6 +17,17 @@ class AsistenciaController extends Controller
 
         $fecha = now()->toDateString();
 
+        $inscrito = DB::table('alumnos_clases')
+            ->where('alumno_id', $request->alumno_id)
+            ->where('clase_id', $request->clase_id)
+            ->exists();
+
+        if (!$inscrito) {
+            return response()->json([
+                'message' => 'El alumno no está inscrito en esta clase'
+            ], 403);
+        }
+
         $existe = DB::table('asistencias')
             ->where('clase_id', $request->clase_id)
             ->where('alumno_id', $request->alumno_id)
@@ -27,17 +38,6 @@ class AsistenciaController extends Controller
             return response()->json([
                 'message' => 'La asistencia ya fue registrada hoy'
             ], 400);
-        }
-
-                $inscrito = DB::table('alumnos_clases')
-            ->where('alumno_id', $request->alumno_id)
-            ->where('clase_id', $request->clase_id)
-            ->exists();
-        
-        if (!$inscrito) {
-            return response()->json([
-                'message' => 'El alumno no está inscrito en esta clase'
-            ], 403);
         }
 
         DB::table('asistencias')->insert([
@@ -57,21 +57,52 @@ class AsistenciaController extends Controller
 
     public function asistenciasPorClase($id)
     {
-        $asistencias = DB::table('asistencias')
-            ->join('usuarios', 'asistencias.alumno_id', '=', 'usuarios.id')
-            ->where('asistencias.clase_id', $id)
+        $fecha = request()->query('fecha');
+
+        if (!$fecha) {
+            $fecha = DB::table('asistencias')
+                ->where('clase_id', $id)
+                ->max('fecha');
+        }
+
+        $alumnos = DB::table('alumnos_clases')
+            ->join('usuarios', 'alumnos_clases.alumno_id', '=', 'usuarios.id')
+            ->where('alumnos_clases.clase_id', $id)
             ->select(
-                'asistencias.id',
+                'usuarios.id',
                 'usuarios.nombre',
-                'usuarios.correo',
-                'asistencias.fecha',
-                'asistencias.hora',
-                'asistencias.estado'
+                'usuarios.correo'
             )
             ->get();
 
+        $asistencias = collect();
+
+        if ($fecha) {
+            $asistencias = DB::table('asistencias')
+                ->where('clase_id', $id)
+                ->where('fecha', $fecha)
+                ->get();
+        }
+
+        $reporte = $alumnos->map(function ($alumno) use ($asistencias) {
+            $asistencia = $asistencias->firstWhere('alumno_id', $alumno->id);
+
+            return [
+                'alumno_id' => $alumno->id,
+                'nombre' => $alumno->nombre,
+                'correo' => $alumno->correo,
+                'estado' => $asistencia ? 'Presente' : 'Falta',
+                'fecha' => $asistencia->fecha ?? null,
+                'hora' => $asistencia->hora ?? null,
+            ];
+        });
+
         return response()->json([
-            'asistencias' => $asistencias
+            'fecha_consultada' => $fecha,
+            'total_alumnos' => $alumnos->count(),
+            'total_presentes' => $reporte->where('estado', 'Presente')->count(),
+            'total_faltas' => $reporte->where('estado', 'Falta')->count(),
+            'reporte' => $reporte->values()
         ]);
     }
 }
